@@ -1,21 +1,5 @@
-// Import Firebase modules
-import { initializeApp } from "firebase/app"
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth"
 
-// ===== Firebase Configuration =====
-// IMPORTANT: Replace with your Firebase config from Firebase Console
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID",
-}
-
-// Initialize Firebase
-const firebaseApp = initializeApp(firebaseConfig)
-const auth = getAuth(firebaseApp)
+const auth = firebase.auth()
 
 // ===== Global State =====
 let isLoginMode = true
@@ -39,25 +23,27 @@ function toggleAuthMode() {
 }
 
 async function handleAuth(e) {
-  e.preventDefault()
-  const email = authEmail.value.trim()
-  const password = authPassword.value.trim()
+  e.preventDefault();
+  const email = authEmail.value.trim();
+  const password = authPassword.value.trim();
 
   if (!email || !password) {
-    showError(authError, "Please fill in all fields")
-    return
+    showError(authError, "Please fill in all fields");
+    return;
   }
 
   try {
     if (isLoginMode) {
-      await signInWithEmailAndPassword(auth, email, password)
+      // UPDATED syntax for compat library
+      await auth.signInWithEmailAndPassword(email, password);
     } else {
-      await createUserWithEmailAndPassword(auth, email, password)
+      // UPDATED syntax for compat library
+      await auth.createUserWithEmailAndPassword(email, password);
     }
-    authForm.reset()
-    authError.style.display = "none"
+    authForm.reset();
+    authError.style.display = "none";
   } catch (error) {
-    showError(authError, error.message)
+    showError(authError, error.message);
   }
 }
 
