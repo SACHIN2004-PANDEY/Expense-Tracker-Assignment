@@ -6,6 +6,9 @@ let allExpenses = [];
 let filteredExpenses = [];
 let monthlyBudget = 0;
 let unsubscribeExpenses = null; // Store the listener to stop it later
+let categoryChart = null;
+let trendChart = null;
+let currentTrendView = 'weekly'; // 'weekly' or 'monthly'
 
 // ===== DOM Elements =====
 const logoutBtn = document.getElementById("logoutBtn");
@@ -41,18 +44,48 @@ function logout() {
 }
 
 // ===== Budget Functions =====
-function loadBudget() {
-  const savedBudget = localStorage.getItem("monthlyBudget");
-  if (savedBudget) {
-    monthlyBudget = parseFloat(savedBudget);
-    monthlyBudgetInput.value = monthlyBudget;
+// Updated loadBudget function
+async function loadBudget() {
+  if (!currentUser) return;
+
+  try {
+    const userDoc = await db.collection("users").doc(currentUser.uid).get();
+    
+    if (userDoc.exists && userDoc.data().monthlyBudget) {
+      monthlyBudget = userDoc.data().monthlyBudget;
+      monthlyBudgetInput.value = monthlyBudget;
+    } else {
+      // Default to 0 if no budget is set
+      monthlyBudget = 0;
+      monthlyBudgetInput.value = "";
+    }
+    
+    // Re-calculate display in case expenses loaded before budget
+    updateBudgetDisplay(filteredExpenses);
+    
+  } catch (error) {
+    console.error("Error loading budget:", error);
   }
 }
 
-function saveBudget() {
-  monthlyBudget = parseFloat(monthlyBudgetInput.value) || 0;
-  localStorage.setItem("monthlyBudget", monthlyBudget);
+async function saveBudget() {
+  const newBudget = parseFloat(monthlyBudgetInput.value) || 0;
+  
+  // Update local state immediately for better UI responsiveness
+  monthlyBudget = newBudget;
   updateBudgetDisplay(filteredExpenses);
+
+  if (currentUser) {
+    try {
+      await db.collection("users").doc(currentUser.uid).set({
+        monthlyBudget: newBudget
+      }, { merge: true }); // merge: true ensures we don't overwrite other potential fields
+      console.log("Budget saved to Firebase");
+    } catch (error) {
+      console.error("Error saving budget:", error);
+      alert("Failed to save budget to server.");
+    }
+  }
 }
 
 function updateBudgetDisplay(expensesList) {
@@ -202,8 +235,14 @@ function updateAnalytics(expensesList) {
 
   totalSpendEl.textContent = `₹${totalSpend.toFixed(2)}`;
 
+  // --- UPDATE LIST (Existing Code) ---
   if (Object.keys(categoryBreakdown).length === 0) {
     categoryBreakdownEl.innerHTML = '<p class="empty-state">No expenses yet</p>';
+    // Optional: Clear chart if no data
+    if (categoryChart) {
+        categoryChart.destroy();
+        categoryChart = null;
+    }
   } else {
     categoryBreakdownEl.innerHTML = Object.entries(categoryBreakdown)
       .map(
@@ -214,6 +253,10 @@ function updateAnalytics(expensesList) {
           </div>`
       )
       .join("");
+      
+    // --- NEW: RENDER CHART ---
+    renderChart(categoryBreakdown);
+    renderTrendChart(expensesList); // <--- Add this line
   }
 
   updateBudgetDisplay(expensesList);
@@ -271,19 +314,187 @@ function setDefaultDate() {
   expenseDate.value = today;
 }
 
+function renderChart(breakdown) {
+  const ctx = document.getElementById('categoryChart').getContext('2d');
+  
+  // Extract labels (categories) and data (amounts)
+  const labels = Object.keys(breakdown);
+  const data = Object.values(breakdown);
+
+  // Define colors for your categories matching your CSS badges if possible
+  const backgroundColors = [
+    '#FF6384', // Redish
+    '#36A2EB', // Blue
+    '#FFCE56', // Yellow
+    '#4BC0C0', // Teal
+    '#9966FF', // Purple
+    '#FF9F40'  // Orange
+  ];
+
+  // If a chart instance already exists, destroy it before creating a new one
+  if (categoryChart) {
+    categoryChart.destroy();
+  }
+
+  // Create new Chart
+  categoryChart = new Chart(ctx, {
+    type: 'doughnut', // You can change this to 'pie' if you prefer a full circle
+    data: {
+      labels: labels,
+      datasets: [{
+        data: data,
+        backgroundColor: backgroundColors,
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+        }
+      }
+    }
+  });
+}
+
+// Helper: Get the start of the week (Monday) for a given date string
+function getStartOfWeek(dateString) {
+  const d = new Date(dateString);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+  const monday = new Date(d.setDate(diff));
+  return monday.toISOString().split('T')[0]; // Returns YYYY-MM-DD
+}
+
+// Helper: Get Month key (YYYY-MM)
+function getMonthKey(dateString) {
+  return dateString.substring(0, 7); // Returns YYYY-MM
+}
+
+function renderTrendChart(expenses) {
+  const ctx = document.getElementById('trendChart').getContext('2d');
+  
+  // 1. Group Data
+  const groupedData = {};
+  
+  // Sort expenses by date ascending (oldest first) for the line chart
+  const sortedExpenses = [...expenses].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  sortedExpenses.forEach(expense => {
+    let key;
+    if (currentTrendView === 'weekly') {
+      key = getStartOfWeek(expense.date); // Key: "2023-10-23"
+    } else {
+      key = getMonthKey(expense.date);    // Key: "2023-10"
+    }
+    
+    if (!groupedData[key]) groupedData[key] = 0;
+    groupedData[key] += expense.amount;
+  });
+
+  const labels = Object.keys(groupedData);
+  const dataPoints = Object.values(groupedData);
+
+  // 2. Format Labels for Display (Optional: Make them prettier)
+  const displayLabels = labels.map(label => {
+    const d = new Date(label);
+    if (currentTrendView === 'weekly') {
+      return `Week of ${d.getDate()}/${d.getMonth() + 1}`;
+    } else {
+      return d.toLocaleString('default', { month: 'short', year: 'numeric' });
+    }
+  });
+
+  // 3. Destroy old chart
+  if (trendChart) {
+    trendChart.destroy();
+  }
+
+  // 4. Create Chart
+  trendChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: displayLabels,
+      datasets: [{
+        label: currentTrendView === 'weekly' ? 'Weekly Spend' : 'Monthly Spend',
+        data: dataPoints,
+        borderColor: '#7033ff', // Your primary color
+        backgroundColor: 'rgba(112, 51, 255, 0.1)',
+        borderWidth: 2,
+        tension: 0.3, // Makes line slightly curved
+        fill: true,
+        pointBackgroundColor: '#ffffff',
+        pointBorderColor: '#7033ff',
+        pointRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return `₹${context.raw.toFixed(2)}`;
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: { borderDash: [2, 4], color: '#e5e7eb' }
+        },
+        x: {
+          grid: { display: false }
+        }
+      }
+    }
+  });
+}
+// ===== Auth State Listener =====
 // ===== Auth State Listener =====
 auth.onAuthStateChanged((user) => {
   if (user) {
     currentUser = user;
-    loadBudget();
+    loadBudget(); // <--- This now fetches from Firebase
     setDefaultDate();
-    // Start the real-time listener instead of a one-time fetch
     setupRealtimeListener();
   } else {
-    // Stop listener if user is logged out (handled in logout, but good safety)
     if (unsubscribeExpenses) unsubscribeExpenses();
     window.location.href = "login.html";
   }
+});
+
+const showWeeklyBtn = document.getElementById("showWeeklyBtn");
+const showMonthlyBtn = document.getElementById("showMonthlyBtn");
+
+showWeeklyBtn.addEventListener("click", () => {
+  if (currentTrendView === 'weekly') return; // Do nothing if already active
+  
+  currentTrendView = 'weekly';
+  
+  // Toggle UI classes
+  showWeeklyBtn.classList.add("active");
+  showMonthlyBtn.classList.remove("active");
+  
+  // Re-render chart with current data
+  renderTrendChart(filteredExpenses);
+});
+
+showMonthlyBtn.addEventListener("click", () => {
+  if (currentTrendView === 'monthly') return;
+  
+  currentTrendView = 'monthly';
+  
+  // Toggle UI classes
+  showMonthlyBtn.classList.add("active");
+  showWeeklyBtn.classList.remove("active");
+  
+  renderTrendChart(filteredExpenses);
 });
 
 // ===== Event Listeners =====

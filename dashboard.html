@@ -50,12 +50,31 @@
                         <div class="analytics-value" id="totalSpend">₹0.00</div>
                     </div>
                     <div class="analytics-card">
-                        <div class="analytics-label">Category Breakdown</div>
-                        <div class="analytics-breakdown" id="categoryBreakdown">
-                            <p class="empty-state">No expenses yet</p>
-                        </div>
-                    </div>
+    <div class="analytics-label">Category Breakdown</div>
+    
+    <div style="position: relative; height: 250px; width: 100%; margin-bottom: 20px;">
+        <canvas id="categoryChart"></canvas>
+    </div>
+
+    <div class="analytics-breakdown" id="categoryBreakdown">
+        <p class="empty-state">No expenses yet</p>
+    </div>
+</div>
                 </div>
+                <div class="analytics-card" style="margin-top: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <div class="analytics-label" style="margin-bottom: 0;">Expense Trends</div>
+        
+        <div class="chart-toggle-container">
+            <button id="showWeeklyBtn" class="toggle-btn active">Weekly</button>
+            <button id="showMonthlyBtn" class="toggle-btn">Monthly</button>
+        </div>
+    </div>
+    
+    <div style="position: relative; height: 300px; width: 100%;">
+        <canvas id="trendChart"></canvas>
+    </div>
+</div>
             </section>
 
             <!-- Main Grid: Add Expense + Filters -->
@@ -150,6 +169,7 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
