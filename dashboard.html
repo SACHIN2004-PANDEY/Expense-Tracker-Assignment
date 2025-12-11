@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Tracker - Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Dashboard Section -->
+    <div class="dashboard">
+        <!-- Navbar -->
+        <nav class="navbar">
+            <div class="navbar-container">
+                <h2 class="navbar-title">Expense Tracker</h2>
+                
+                <!-- Added Monthly Budget input to navbar -->
+                <div class="budget-container">
+                    <label for="monthlyBudget" class="budget-label">Monthly Budget:</label>
+                    <div class="budget-input-wrapper">
+                        <span class="budget-currency">₹</span>
+                        <input 
+                            type="number" 
+                            id="monthlyBudget" 
+                            placeholder="0.00" 
+                            step="0.01" 
+                            min="0"
+                        >
+                    </div>
+                </div>
+                
+                <button id="logoutBtn" class="btn btn-outline">Logout</button>
+            </div>
+        </nav>
+
+        <!-- Budget Warning Alert -->
+        <div id="budgetWarning" class="budget-warning" style="display: none;">
+            Warning: You have exceeded your budget!
+        </div>
+
+        <!-- Main Content -->
+        <div class="dashboard-container">
+            <!-- Analytics Section -->
+            <section class="analytics-section">
+                <h3 class="section-title">Analytics</h3>
+                <div class="analytics-grid">
+                    <div class="analytics-card">
+                        <div class="analytics-label">Total Spend</div>
+                        <!-- Added id for over-budget styling -->
+                        <div class="analytics-value" id="totalSpend">₹0.00</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-label">Category Breakdown</div>
+                        <div class="analytics-breakdown" id="categoryBreakdown">
+                            <p class="empty-state">No expenses yet</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Main Grid: Add Expense + Filters -->
+            <div class="dashboard-grid">
+                <!-- Add Expense Form -->
+                <section class="add-expense-section">
+                    <h3 class="section-title">Add Expense</h3>
+                    <form id="addExpenseForm" class="expense-form">
+                        <div class="form-group">
+                            <label for="expenseDate">Date</label>
+                            <input type="date" id="expenseDate" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="expenseCategory">Category</label>
+                            <select id="expenseCategory" required>
+                                <option value="">Select Category</option>
+                                <option value="Food">Food</option>
+                                <option value="Travel">Travel</option>
+                                <option value="Work">Work</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="expenseAmount">Amount (₹)</label>
+                            <input type="number" id="expenseAmount" placeholder="0.00" step="0.01" min="0" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="expenseNote">Note</label>
+                            <textarea id="expenseNote" placeholder="Add a note..." rows="3"></textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-full">Add Expense</button>
+                    </form>
+                    <div id="expenseError" class="alert alert-error" style="display: none;"></div>
+                    <div id="expenseSuccess" class="alert alert-success" style="display: none;"></div>
+                </section>
+
+                <!-- Filters & Expenses -->
+                <section class="expenses-section">
+                    <!-- Filters -->
+                    <div class="filters-section">
+                        <h3 class="section-title">Filters</h3>
+                        <div class="filters-grid">
+                            <div class="form-group">
+                                <label for="filterStartDate">Start Date</label>
+                                <input type="date" id="filterStartDate">
+                            </div>
+                            <div class="form-group">
+                                <label for="filterEndDate">End Date</label>
+                                <input type="date" id="filterEndDate">
+                            </div>
+                            <div class="form-group">
+                                <label for="filterCategory">Category</label>
+                                <select id="filterCategory">
+                                    <option value="">All Categories</option>
+                                    <option value="Food">Food</option>
+                                    <option value="Travel">Travel</option>
+                                    <option value="Work">Work</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <button id="resetFilters" class="btn btn-outline">Reset</button>
+                        </div>
+                    </div>
+
+                    <!-- Recent Expenses Table -->
+                    <div class="table-section">
+                        <h3 class="section-title">Recent Expenses</h3>
+                        <div class="table-container">
+                            <table id="expensesTable">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Category</th>
+                                        <th>Note</th>
+                                        <th>Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="expensesTableBody">
+                                    <tr class="empty-row">
+                                        <td colspan="4" class="empty-state">No expenses yet. Add one to get started!</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+    <script src="dashboard.js"></script>
+</body>
+</html>

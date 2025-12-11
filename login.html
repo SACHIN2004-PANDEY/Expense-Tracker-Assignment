@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Tracker - Login</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Login Section -->
+    <div class="auth-container">
+        <div class="auth-card">
+            <h1 class="auth-title">Expense Tracker</h1>
+            <p class="auth-subtitle">Manage your finances effortlessly</p>
+            
+            <form id="authForm" class="auth-form">
+                <div class="form-group">
+                    <label for="authEmail">Email</label>
+                    <input type="email" id="authEmail" placeholder="Enter your email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="authPassword">Password</label>
+                    <input type="password" id="authPassword" placeholder="Enter your password" required>
+                </div>
+                
+                <button type="submit" id="authButton" class="btn btn-primary">Login</button>
+            </form>
+            
+            <div class="auth-toggle">
+                <p>
+                    <span id="toggleText">Don't have an account?</span>
+                    <button type="button" id="toggleAuthMode" class="btn-link">Register</button>
+                </p>
+            </div>
+            
+            <div id="authError" class="alert alert-error" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+    <script src="auth.js"></script>
+</body>
+</html>
