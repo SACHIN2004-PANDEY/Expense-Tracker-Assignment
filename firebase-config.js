@@ -13,3 +13,21 @@ if (!firebase.apps.length) {
 
 const auth = firebase.auth();
 const db = firebase.firestore();
+
+// In auth.js
+
+function toggleAuthMode() {
+  isLoginMode = !isLoginMode;
+  
+  // 1. Change the Main Button (Login <-> Register)
+  authButton.textContent = isLoginMode ? "Login" : "Register";
+  
+  // 2. Change the Helper Text
+  toggleText.textContent = isLoginMode ? "Don't have an account?" : "Already have an account?";
+  
+  // 3. Change the Toggle Link (Register <-> Login) -- THIS WAS MISSING
+  toggleAuthModeBtn.textContent = isLoginMode ? "Register" : "Login";
+  
+  authForm.reset();
+  authError.style.display = "none";
+}

@@ -5,6 +5,7 @@ let currentUser = null;
 let allExpenses = [];
 let filteredExpenses = [];
 let monthlyBudget = 0;
+let unsubscribeExpenses = null; // Store the listener to stop it later
 
 // ===== DOM Elements =====
 const logoutBtn = document.getElementById("logoutBtn");
@@ -30,6 +31,10 @@ const categoryBreakdownEl = document.getElementById("categoryBreakdown");
 
 // ===== Logout Function =====
 function logout() {
+  // Stop listening to updates when logging out
+  if (unsubscribeExpenses) {
+    unsubscribeExpenses();
+  }
   auth.signOut().then(() => {
     window.location.href = "login.html";
   });
@@ -54,7 +59,7 @@ function updateBudgetDisplay(expensesList) {
   const { totalSpend } = calculateAnalytics(expensesList);
 
   if (monthlyBudget > 0 && totalSpend > monthlyBudget) {
-    totalSpendEl.classList.add("over-budget"); // Ensure you have CSS for this class
+    totalSpendEl.classList.add("over-budget");
     budgetWarning.style.display = "block";
     budgetWarning.textContent = `Warning: You have exceeded your budget of ₹${monthlyBudget}!`;
   } else {
@@ -64,6 +69,8 @@ function updateBudgetDisplay(expensesList) {
 }
 
 // ===== Firestore Functions =====
+
+// 1. ADD EXPENSE (Writes to DB)
 async function addExpense(date, category, amount, note) {
   if (!currentUser) {
     showError(expenseError, "No user logged in");
@@ -76,12 +83,12 @@ async function addExpense(date, category, amount, note) {
   }
 
   const submitBtn = addExpenseForm.querySelector("button[type='submit']");
-  submitBtn.disabled = true; // Prevent double clicks
+  submitBtn.disabled = true;
   submitBtn.textContent = "Adding...";
 
   try {
     await db.collection("expenses").add({
-      uid: currentUser.uid, // Security: Link expense to specific user
+      uid: currentUser.uid,
       date: date,
       category: category,
       amount: parseFloat(amount),
@@ -93,8 +100,9 @@ async function addExpense(date, category, amount, note) {
     addExpenseForm.reset();
     setDefaultDate();
     
-    // Refresh expenses immediately
-    await fetchExpenses();
+    // NOTE: We do NOT need to call fetchExpenses() manually anymore.
+    // The onSnapshot listener below will detect the change automatically.
+
   } catch (error) {
     console.error("Error adding expense:", error);
     showError(expenseError, error.message);
@@ -104,29 +112,37 @@ async function addExpense(date, category, amount, note) {
   }
 }
 
-async function fetchExpenses() {
+// 2. LISTEN FOR EXPENSES (Reads from DB in Real-time)
+function setupRealtimeListener() {
   if (!currentUser) return;
 
-  try {
-    // Fetch expenses for the current user only
-    const snapshot = await db
-      .collection("expenses")
-      .where("uid", "==", currentUser.uid)
-      .orderBy("date", "desc") // Order by Date instead of created time for better UX
-      .get();
+  // Unsubscribe from previous listener if it exists
+  if (unsubscribeExpenses) {
+    unsubscribeExpenses();
+  }
 
+  // Create a query
+  const q = db.collection("expenses")
+    .where("uid", "==", currentUser.uid)
+    .orderBy("date", "desc");
+
+  // onSnapshot sets up the continuous listener
+  unsubscribeExpenses = q.onSnapshot((snapshot) => {
     allExpenses = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     }));
 
+    // Update UI whenever data changes
     filteredExpenses = [...allExpenses];
     applyFilters();
-  } catch (error) {
-    console.error("Error fetching expenses:", error);
-    // Note: If you get a "Missing or insufficient permissions" error here,
-    // check your Firestore Rules in the console.
-  }
+  }, (error) => {
+    console.error("Error listening to expenses:", error);
+    // This usually triggers if the Index is missing
+    if (error.code === 'failed-precondition') {
+        console.log("INDEX MISSING: Check the console link to create it.");
+    }
+  });
 }
 
 function filterExpenses() {
@@ -217,7 +233,7 @@ function renderExpenses(expenses) {
   expensesTableBody.innerHTML = expenses
     .map((expense) => {
       const categoryClass = `badge-${expense.category.toLowerCase()}`;
-      // Fix date display to avoid timezone issues
+      // Formatting date: YYYY-MM-DD -> DD/MM/YYYY
       const dateParts = expense.date.split("-");
       const displayDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`; 
 
@@ -256,13 +272,16 @@ function setDefaultDate() {
 }
 
 // ===== Auth State Listener =====
-auth.onAuthStateChanged(async (user) => {
+auth.onAuthStateChanged((user) => {
   if (user) {
     currentUser = user;
     loadBudget();
     setDefaultDate();
-    await fetchExpenses();
+    // Start the real-time listener instead of a one-time fetch
+    setupRealtimeListener();
   } else {
+    // Stop listener if user is logged out (handled in logout, but good safety)
+    if (unsubscribeExpenses) unsubscribeExpenses();
     window.location.href = "login.html";
   }
 });

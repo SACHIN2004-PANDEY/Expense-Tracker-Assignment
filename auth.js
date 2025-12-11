@@ -1,5 +1,5 @@
-
-const auth = firebase.auth()
+// DELETE THIS LINE: const auth = firebase.auth() 
+// (It is already defined in firebase-config.js)
 
 // ===== Global State =====
 let isLoginMode = true
@@ -34,10 +34,8 @@ async function handleAuth(e) {
 
   try {
     if (isLoginMode) {
-      // UPDATED syntax for compat library
       await auth.signInWithEmailAndPassword(email, password);
     } else {
-      // UPDATED syntax for compat library
       await auth.createUserWithEmailAndPassword(email, password);
     }
     authForm.reset();
@@ -54,7 +52,6 @@ function showError(element, message) {
 }
 
 // ===== Auth State Listener =====
-// Redirect to dashboard if logged in
 auth.onAuthStateChanged((user) => {
   if (user) {
     window.location.href = "dashboard.html"
