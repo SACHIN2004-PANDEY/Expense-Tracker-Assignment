@@ -39,7 +39,7 @@ function logout() {
     unsubscribeExpenses();
   }
   auth.signOut().then(() => {
-    window.location.href = "login.html";
+    window.location.href = "index.html";
   });
 }
 
@@ -465,7 +465,7 @@ auth.onAuthStateChanged((user) => {
     setupRealtimeListener();
   } else {
     if (unsubscribeExpenses) unsubscribeExpenses();
-    window.location.href = "login.html";
+    window.location.href = "index.html";
   }
 });
 
